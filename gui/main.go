@@ -1,4 +1,4 @@
-package gui
+package main
 
 import (
 	"mesh/p2p"
@@ -9,7 +9,7 @@ func main() {
 	port := 8080
 
 	peer := p2p.NewPeer(username, port)
-	go peer.StartServer()
 
-	go peer.SendMessage(username, "HELLO dorito 8080")
+	peer.StartServer()
+	peer.SendMessage(username, "HELLO dorito 8080")
 }

@@ -3,14 +3,13 @@ package p2p
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 )
 
 type Peer struct {
 	username string
 	port     int
-	// Server part
-	listener net.Listener
 	// Client part
 	peers map[string]string // name -> adress ("host:port")
 }
@@ -26,7 +25,14 @@ func NewPeer(username string, port int) *Peer {
 // - SERVER PART -
 
 func (p *Peer) StartServer() {
-	listener, _ := net.Listen("tcp", ":"+string(rune(p.port)))
+
+	listener, err := net.Listen("tcp", ":"+strconv.Itoa(p.port))
+
+	if err != nil {
+		fmt.Println("Error while listening to port: ", err)
+		return
+	}
+
 	fmt.Println("Peer created as", p.username, " and server listening on port:", p.port)
 
 	defer listener.Close()
@@ -35,7 +41,11 @@ func (p *Peer) StartServer() {
 
 func (p *Peer) wait(listener net.Listener) {
 	for {
-		connection, _ := listener.Accept()
+		connection, err := listener.Accept()
+		if err != nil {
+			fmt.Println("Error while accepting: ", err)
+			return
+		}
 		go p.handleConnection(connection)
 	}
 }
@@ -100,7 +110,7 @@ func (p *Peer) connect(adress string) (net.Conn, error) {
 	}
 
 	// Send hello message
-	hello := "HELLO " + p.username + " " + string(rune(p.port))
+	hello := "HELLO " + p.username + " " + strconv.Itoa(p.port)
 	conn.Write([]byte(hello))
 
 	return conn, nil
