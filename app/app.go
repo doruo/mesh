@@ -7,17 +7,60 @@ import (
 	"os"
 )
 
-func Start() {
+var currentPeer *p2p.Peer
+
+func Init() {
+	if currentPeer != nil {
+		return
+	}
 	displayTitle()
 
-	username := "peerTest"
-	port := 8080
+	fmt.Println("Create a new peer")
 
-	peer := p2p.NewPeer(username, port)
-	peer.StartServer()
+	fmt.Print("Enter your name: ")
+	name := readString()
+	fmt.Print("Enter your port: ")
+	port := readInt()
 
-	msg := "HELLO peerTest2 8080"
-	peer.SendMessage(username, msg)
+	currentPeer = p2p.NewPeer(name, "localhost", port)
+}
+
+func StartServer() {
+	Init()
+	currentPeer.StartServer()
+}
+
+func Connect() {
+	Init()
+	fmt.Println("\nConnect to another peer")
+	fmt.Print("Enter host: ")
+	host := readString()
+	fmt.Print("Enter port: ")
+	port := readInt()
+
+	adr := fmt.Sprintf("%s:%d", host, port)
+	currentPeer.Connect(adr)
+}
+
+func SendMsg() {
+	Connect()
+	fmt.Print("Enter name: ")
+	otherPeerName := readString()
+
+	msg := fmt.Sprintf("HELLO %s", otherPeerName)
+	currentPeer.SendMsg(otherPeerName, msg)
+}
+
+func readString() string {
+	var input string
+	fmt.Scanf("%s", &input)
+	return input
+}
+
+func readInt() int {
+	var input int
+	fmt.Scanf("%d", &input)
+	return input
 }
 
 func displayTitle() {

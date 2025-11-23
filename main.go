@@ -3,5 +3,6 @@ package main
 import "mesh/app"
 
 func main() {
-	app.Start()
+	//app.StartServer()
+	app.SendMsg()
 }

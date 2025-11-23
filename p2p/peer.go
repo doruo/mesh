@@ -7,117 +7,122 @@ import (
 	"strings"
 )
 
+// A Peer instance serves both as a server and a client. It can connect to other peers and register them.
 type Peer struct {
-	username string
-	port     int
-	// Client part
+	name string
+	// Server
+	adr  string `default:"localhost"`
+	port int    `default:"443"`
+	// Client
 	peers map[string]string // name -> adress ("host:port")
 }
 
 // Returns new peer instance with no listener nor peers.
-func NewPeer(username string, port int) *Peer {
+func NewPeer(name string, adr string, port int) *Peer {
+	fmt.Printf("\nCreating new peer as %s, %s:%d ", name, adr, port)
 	return &Peer{
-		username: username,
-		port:     port,
+		name: name,
+		adr:  adr,
+		port: port,
 	}
 }
 
-// - SERVER PART -
+// SERVER
 
+// Starts server and wait for any other peer connection.
 func (p *Peer) StartServer() {
-
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", p.port))
 
 	if err != nil {
-		log.Fatal("Error while listening :", err)
+		log.Fatalln("Error while listening :\n", err)
 	}
 
-	fmt.Printf("Peer created as %s and server listening on %d", p.username, p.port)
+	fmt.Printf("\nServer listening on %d", p.port)
 	defer listener.Close()
 	p.wait(listener)
 }
 
 func (p *Peer) wait(listener net.Listener) {
 	for {
-		connection, err := listener.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
-			log.Fatal("Error while accepting: ", err)
+			log.Fatalln("Error while accepting :\n", err)
 		}
-		go p.handleConnection(connection)
+		go p.handleConn(conn)
 	}
 }
 
-func (p *Peer) handleConnection(connection net.Conn) {
+func (p *Peer) handleConn(conn net.Conn) {
 
 	buffer := make([]byte, 1024)
-	length, _ := connection.Read(buffer)
-	message := string(buffer[:length])
+	length, _ := conn.Read(buffer)
+	msg := string(buffer[:length])
 
 	// Register peer connnection
-	parts := strings.Split(message, " ")
-	fmt.Printf("DEBUG %v", parts)
+	parts := strings.Split(msg, " ")
+	fmt.Printf("\nHandling connection from %d", conn.RemoteAddr())
 
 	if parts[0] == "HELLO" {
 
 		name := parts[1]
-		port := parts[2]
+		port := 443
 
-		// Fetch IP from connexion
-		IP := getConnIPAdress(connection)
-		completeAdress := fmt.Sprintf("%s:%s", IP, port)
-		p.setPeer(name, completeAdress)
-		fmt.Printf("Connected to %s (%s:%s)", name, IP, port)
+		IP := getConnAdr(conn)
+		adr := fmt.Sprintf("%s:%d", IP, port)
+
+		p.registerPeer(name, adr)
+		fmt.Printf("Connected to %s (%s:%d)", name, IP, port)
 	} else {
-		fmt.Println(message)
+		fmt.Println(msg)
 	}
 }
 
 // Save peer adress in peers list.
-func (p *Peer) setPeer(peerName string, adress string) {
-	p.peers[peerName] = adress
+func (p *Peer) registerPeer(name string, adr string) {
+	p.peers[name] = adr
 }
 
-// - CLIENT PART -
+// CLIENT PART
 
-// Sends message to an another peer.
-func (p *Peer) SendMessage(peerName, message string) {
+// Sends message to an another peer as a client.
+func (p *Peer) SendMsg(name, msg string) {
 
-	// Connect to corresponding peer
-	address := p.getPeerAdress(peerName)
-	conn := p.connect(address)
+	address := p.getPeerAdr(name)
+	conn := p.Connect(address)
 
 	defer conn.Close()
 	// Send message
-	conn.Write([]byte(message))
+	conn.Write([]byte(msg))
 	conn.Close()
+	fmt.Println(msg)
 }
 
 // Connect peer to an another peer server adress.
-func (p *Peer) connect(adr string) net.Conn {
-
+func (p *Peer) Connect(adr string) net.Conn {
+	fmt.Printf("Connecting to %s...", adr)
 	conn, err := net.Dial("tcp", adr)
 	if err != nil {
-		log.Fatal("Error while connecting to server :", err)
+		log.Fatalln("Error while connecting to server :\n", err)
 	}
-
-	p.sendHelloMsg(conn)
+	fmt.Println("Success !")
+	p.sendHello(conn)
 	return conn
 }
 
 // Fetch peer adress in peers list.
-func (p *Peer) sendHelloMsg(conn net.Conn) {
-	conn.Write([]byte(p.getHelloMsg()))
+func (p *Peer) sendHello(conn net.Conn) {
+	conn.Write([]byte(p.getHello()))
 }
 
-func (p *Peer) getHelloMsg() string {
-	return fmt.Sprintf("HELLO %s %d", p.username, p.port)
+func (p *Peer) getHello() string {
+	return fmt.Sprintf("HELLO %s %d", p.name, p.port)
 }
 
 // Fetch peer adress in peers list.
-func (p *Peer) getPeerAdress(peerName string) string {
+func (p *Peer) getPeerAdr(peerName string) string {
 	return p.peers[peerName]
 }
 
-func getConnIPAdress(conn net.Conn) string {
+func getConnAdr(conn net.Conn) string {
 	return strings.Split(conn.RemoteAddr().String(), ":")[0]
 }
