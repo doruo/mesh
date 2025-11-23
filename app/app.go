@@ -13,15 +13,15 @@ var peer *p2p.Peer
 // Start main peer application instance.
 func Start() {
 	displayTitle()
-	fmt.Println("[1] Server mode")
-	fmt.Println("[2] Client mode")
+	fmt.Println("[1] Client mode")
+	fmt.Println("[2] Server mode")
 	for {
 		fmt.Print("\nChoose a mode : ")
 		switch utils.ReadInt() {
 		case 1:
-			startServer()
-		case 2:
 			startClient()
+		case 2:
+			startServer()
 		}
 	}
 }

@@ -1,6 +1,9 @@
 package p2p
 
-import "fmt"
+import (
+	"fmt"
+	"log"
+)
 
 // A Peer instance serves both as a server and a client. It can connect to other peers and register them.
 type Peer struct {
@@ -12,7 +15,9 @@ type Peer struct {
 
 // Returns new peer instance with no listener nor peers.
 func NewPeer(name string, host string, port int) *Peer {
-	fmt.Printf("\nCreating new peer as %s, %s:%d ", name, host, port)
+	fmt.Println()
+	log.Printf("Creating new peer as %s, %s:%d ", name, host, port)
+
 	return &Peer{
 		name:  name,
 		host:  host,
@@ -23,7 +28,7 @@ func NewPeer(name string, host string, port int) *Peer {
 
 // Save peer adress in peers list.
 func (p *Peer) setPeer(name string, adr string) {
-	fmt.Printf("\nRegistering %s (%s)", name, adr)
+	log.Printf("Registering %s (%s)", name, adr)
 	p.peers[name] = adr
 }
 
