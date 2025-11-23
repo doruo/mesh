@@ -1,2 +1,13 @@
 # Mesh
-Very simple and lightweight free messaging app, using Peer to Peer networking and written in Go. Chats with your friends. No spying. No data steal. No IA training. Only local. Only yours.
+Simple and lightweight instant messaging app, using Peer2Peer networking and written in Go. 
+
+Chats with your friends. 
+
+No spying. No data steal. Only yours.
+
+## Usage
+
+```bash
+cd ~/path/to/mesh
+go run main.go
+```

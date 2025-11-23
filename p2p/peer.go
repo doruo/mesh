@@ -2,8 +2,8 @@ package p2p
 
 import (
 	"fmt"
+	"log"
 	"net"
-	"strconv"
 	"strings"
 )
 
@@ -26,15 +26,13 @@ func NewPeer(username string, port int) *Peer {
 
 func (p *Peer) StartServer() {
 
-	listener, err := net.Listen("tcp", ":"+strconv.Itoa(p.port))
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", p.port))
 
 	if err != nil {
-		fmt.Println("Error while listening to port: ", err)
-		return
+		log.Fatal("Error while listening :", err)
 	}
 
-	fmt.Println("Peer created as", p.username, " and server listening on port:", p.port)
-
+	fmt.Printf("Peer created as %s and server listening on %d", p.username, p.port)
 	defer listener.Close()
 	p.wait(listener)
 }
@@ -43,8 +41,7 @@ func (p *Peer) wait(listener net.Listener) {
 	for {
 		connection, err := listener.Accept()
 		if err != nil {
-			fmt.Println("Error while accepting: ", err)
-			return
+			log.Fatal("Error while accepting: ", err)
 		}
 		go p.handleConnection(connection)
 	}
@@ -58,6 +55,7 @@ func (p *Peer) handleConnection(connection net.Conn) {
 
 	// Register peer connnection
 	parts := strings.Split(message, " ")
+	fmt.Printf("DEBUG %v", parts)
 
 	if parts[0] == "HELLO" {
 
@@ -65,18 +63,17 @@ func (p *Peer) handleConnection(connection net.Conn) {
 		port := parts[2]
 
 		// Fetch IP from connexion
-		IP := strings.Split(connection.RemoteAddr().String(), ":")[0]
-		p.register(name, IP+":"+port)
-
-		fmt.Println("Connected to", name, "(", IP, port, ")")
-
+		IP := getConnIPAdress(connection)
+		completeAdress := fmt.Sprintf("%s:%s", IP, port)
+		p.setPeer(name, completeAdress)
+		fmt.Printf("Connected to %s (%s:%s)", name, IP, port)
 	} else {
 		fmt.Println(message)
 	}
 }
 
 // Save peer adress in peers list.
-func (p *Peer) register(peerName string, adress string) {
+func (p *Peer) setPeer(peerName string, adress string) {
 	p.peers[peerName] = adress
 }
 
@@ -85,38 +82,42 @@ func (p *Peer) register(peerName string, adress string) {
 // Sends message to an another peer.
 func (p *Peer) SendMessage(peerName, message string) {
 
-	// find peer adress
-	address := p.findAdress(peerName)
-	// Connect to the other peer as client
-	conn, err := p.connect(address)
+	// Connect to corresponding peer
+	address := p.getPeerAdress(peerName)
+	conn := p.connect(address)
 
-	if err != nil {
-		fmt.Println("Error while connecting to server:", err)
-		return
-	}
 	defer conn.Close()
-
 	// Send message
 	conn.Write([]byte(message))
 	conn.Close()
 }
 
 // Connect peer to an another peer server adress.
-func (p *Peer) connect(adress string) (net.Conn, error) {
+func (p *Peer) connect(adr string) net.Conn {
 
-	conn, err := net.Dial("tcp", adress)
+	conn, err := net.Dial("tcp", adr)
 	if err != nil {
-		return nil, err
+		log.Fatal("Error while connecting to server :", err)
 	}
 
-	// Send hello message
-	hello := "HELLO " + p.username + " " + strconv.Itoa(p.port)
-	conn.Write([]byte(hello))
-
-	return conn, nil
+	p.sendHelloMsg(conn)
+	return conn
 }
 
 // Fetch peer adress in peers list.
-func (p *Peer) findAdress(peerName string) string {
+func (p *Peer) sendHelloMsg(conn net.Conn) {
+	conn.Write([]byte(p.getHelloMsg()))
+}
+
+func (p *Peer) getHelloMsg() string {
+	return fmt.Sprintf("HELLO %s %d", p.username, p.port)
+}
+
+// Fetch peer adress in peers list.
+func (p *Peer) getPeerAdress(peerName string) string {
 	return p.peers[peerName]
+}
+
+func getConnIPAdress(conn net.Conn) string {
+	return strings.Split(conn.RemoteAddr().String(), ":")[0]
 }
