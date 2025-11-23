@@ -1,72 +1,71 @@
+// Package app implements a simple Mesh application interface.
 package app
 
 import (
 	"fmt"
-	"log"
 	"mesh/p2p"
-	"os"
+	"mesh/utils"
+	"net"
 )
 
-var currentPeer *p2p.Peer
+var peer *p2p.Peer
 
-func Init() {
-	if currentPeer != nil {
+// Start main peer application instance.
+func Start() {
+	displayTitle()
+	fmt.Println("[1] Server mode")
+	fmt.Println("[2] Client mode")
+	for {
+		fmt.Print("\nChoose a mode : ")
+		switch utils.ReadInt() {
+		case 1:
+			startServer()
+		case 2:
+			startClient()
+		}
+	}
+}
+
+func startServer() {
+	fmt.Println("\n~ Server mode ~")
+	initPeer()
+	peer.StartServer()
+}
+
+func startClient() {
+	fmt.Println("\n~ Client mode ~")
+	initPeer()
+	utils.DisplayConn(connect())
+	peer.StartClient()
+}
+
+func initPeer() {
+	if peer != nil {
 		return
 	}
-	displayTitle()
-
 	fmt.Println("Create a new peer")
-
 	fmt.Print("Enter your name: ")
-	name := readString()
+	name := utils.ReadString()
 	fmt.Print("Enter your port: ")
-	port := readInt()
+	port := utils.ReadInt()
 
-	currentPeer = p2p.NewPeer(name, "localhost", port)
+	peer = p2p.NewPeer(name, "localhost", port)
 }
 
-func StartServer() {
-	Init()
-	currentPeer.StartServer()
-}
-
-func Connect() {
-	Init()
+func connect() net.Conn {
 	fmt.Println("\nConnect to another peer")
 	fmt.Print("Enter host: ")
-	host := readString()
+	host := utils.ReadString()
 	fmt.Print("Enter port: ")
-	port := readInt()
+	port := utils.ReadInt()
 
 	adr := fmt.Sprintf("%s:%d", host, port)
-	currentPeer.Connect(adr)
-}
-
-func SendMsg() {
-	Connect()
-	fmt.Print("Enter name: ")
-	otherPeerName := readString()
-
-	msg := fmt.Sprintf("HELLO %s", otherPeerName)
-	currentPeer.SendMsg(otherPeerName, msg)
-}
-
-func readString() string {
-	var input string
-	fmt.Scanf("%s", &input)
-	return input
-}
-
-func readInt() int {
-	var input int
-	fmt.Scanf("%d", &input)
-	return input
+	return peer.Connect(adr)
 }
 
 func displayTitle() {
-	file, err := os.ReadFile("title.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(string(file))
+	path := "./title.txt"
+	fmt.Println()
+	fmt.Println(utils.ReadFile(path))
+	fmt.Println()
 }

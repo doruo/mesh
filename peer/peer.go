@@ -3,6 +3,7 @@ package p2p
 import (
 	"fmt"
 	"log"
+	"mesh/utils"
 	"net"
 	"strings"
 )
@@ -11,19 +12,20 @@ import (
 type Peer struct {
 	name string
 	// Server
-	adr  string `default:"localhost"`
+	host string `default:"localhost"`
 	port int    `default:"443"`
 	// Client
 	peers map[string]string // name -> adress ("host:port")
 }
 
 // Returns new peer instance with no listener nor peers.
-func NewPeer(name string, adr string, port int) *Peer {
-	fmt.Printf("\nCreating new peer as %s, %s:%d ", name, adr, port)
+func NewPeer(name string, host string, port int) *Peer {
+	fmt.Printf("\nCreating new peer as %s, %s:%d ", name, host, port)
 	return &Peer{
-		name: name,
-		adr:  adr,
-		port: port,
+		name:  name,
+		host:  host,
+		port:  port,
+		peers: make(map[string]string, 20),
 	}
 }
 
@@ -53,25 +55,22 @@ func (p *Peer) wait(listener net.Listener) {
 }
 
 func (p *Peer) handleConn(conn net.Conn) {
+	msg := utils.GetConnMsg(conn)
 
-	buffer := make([]byte, 1024)
-	length, _ := conn.Read(buffer)
-	msg := string(buffer[:length])
-
-	// Register peer connnection
+	// Parse peer connnection
 	parts := strings.Split(msg, " ")
-	fmt.Printf("\nHandling connection from %d", conn.RemoteAddr())
+	code := parts[0]
+	name := parts[1]
+	host := parts[2]
+	port := parts[3]
+	adr := fmt.Sprintf("%s:%s", host, port)
 
-	if parts[0] == "HELLO" {
+	fmt.Printf("\nHandling connection from %s:", adr)
 
-		name := parts[1]
-		port := 443
-
-		IP := getConnAdr(conn)
-		adr := fmt.Sprintf("%s:%d", IP, port)
-
+	// First msg
+	if code == "HELLO" {
 		p.registerPeer(name, adr)
-		fmt.Printf("Connected to %s (%s:%d)", name, IP, port)
+		fmt.Printf("Connected to %s (%s)", name, adr)
 	} else {
 		fmt.Println(msg)
 	}
@@ -79,6 +78,7 @@ func (p *Peer) handleConn(conn net.Conn) {
 
 // Save peer adress in peers list.
 func (p *Peer) registerPeer(name string, adr string) {
+	fmt.Printf("\nRegistering %s (%s)", name, adr)
 	p.peers[name] = adr
 }
 
@@ -87,11 +87,12 @@ func (p *Peer) registerPeer(name string, adr string) {
 // Sends message to an another peer as a client.
 func (p *Peer) SendMsg(name, msg string) {
 
-	address := p.getPeerAdr(name)
-	conn := p.Connect(address)
+	adr := p.getPeerAdr(name)
+	conn := p.Connect(adr)
 
 	defer conn.Close()
 	// Send message
+	fmt.Printf("\n%s", msg)
 	conn.Write([]byte(msg))
 	conn.Close()
 	fmt.Println(msg)
@@ -102,27 +103,24 @@ func (p *Peer) Connect(adr string) net.Conn {
 	fmt.Printf("Connecting to %s...", adr)
 	conn, err := net.Dial("tcp", adr)
 	if err != nil {
-		log.Fatalln("Error while connecting to server :\n", err)
+		log.Fatalln("Error while connecting to peer :\n", err)
 	}
-	fmt.Println("Success !")
+	fmt.Println("\nConnexion succeded !")
 	p.sendHello(conn)
 	return conn
 }
 
 // Fetch peer adress in peers list.
 func (p *Peer) sendHello(conn net.Conn) {
+	fmt.Println("\nSending hello...")
 	conn.Write([]byte(p.getHello()))
 }
 
 func (p *Peer) getHello() string {
-	return fmt.Sprintf("HELLO %s %d", p.name, p.port)
+	return fmt.Sprintf("HELLO %s %s %d", p.name, p.host, p.port)
 }
 
 // Fetch peer adress in peers list.
 func (p *Peer) getPeerAdr(peerName string) string {
 	return p.peers[peerName]
-}
-
-func getConnAdr(conn net.Conn) string {
-	return strings.Split(conn.RemoteAddr().String(), ":")[0]
 }
