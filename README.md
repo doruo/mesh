@@ -1,13 +1,3 @@
-# Mesh
-Simple and lightweight instant messaging app, using Peer2Peer networking and written in Go. 
+# [Moved to Codeberg](https://codeberg.org/doruo/mesh)
 
-Chats with your friends. 
-
-No spying. No data steal. Only yours.
-
-## Usage
-
-```bash
-cd ~/path/to/mesh
-go run main.go
-```
+mesh is now hosted on a non-enshittificated community-driven platform.
